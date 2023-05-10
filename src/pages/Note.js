@@ -1,5 +1,6 @@
 import * as React from 'react';
 import { useState } from 'react';
+import { filter } from 'lodash';
 // material
 import {
   Card,
@@ -13,9 +14,38 @@ import {
   ListItemText,
   TextField,
   Box,
+  InputLabel,
+  MenuItem,
 } from '@mui/material';
+import Select, { SelectChangeEvent } from '@mui/material/Select';
 // components
 import Page from '../components/Page';
+
+function descendingComparator(a, b, orderBy) {
+  if (b[orderBy] < a[orderBy]) {
+    return -1;
+  }
+  if (b[orderBy] > a[orderBy]) {
+    return 1;
+  }
+  return 0;
+}
+
+function getComparator(order, orderBy) {
+  return order === 'desc'
+    ? (a, b) => descendingComparator(a, b, orderBy)
+    : (a, b) => -descendingComparator(a, b, orderBy);
+}
+
+function applySort(array, comparator) {
+  const stabilizedThis = array.map((el, index) => [el, index]);
+  stabilizedThis.sort((a, b) => {
+    const order = comparator(a[0], b[0]);
+    if (order !== 0) return order;
+    return a[1] - b[1];
+  });
+  return stabilizedThis.map((el) => el[0]);
+}
 
 export default function Note() {
   const [list, setList] = useState([]);
@@ -24,6 +54,7 @@ export default function Note() {
   const [content, setContent] = useState('');
   const [selectedId, setSelectedId] = useState(0);
   const [keyword, setKeyword] = useState('');
+  const [order, setOrder] = useState('');
 
   const save = () => {
     if (title.trim() === '') {
@@ -70,7 +101,15 @@ export default function Note() {
     return `${year}-${month}-${day} ${hour}:${min}:${sec}`;
   };
 
-  const filteredList = list.filter((item) => item.title.indexOf(keyword) >= 0 || item.content.indexOf(keyword) >= 0);
+  const handleOrderChange = (event: SelectChangeEvent) => {
+    setOrder(event.target.value);
+  };
+
+  //   const filteredList = list.filter((item) => item.title.indexOf(keyword) >= 0 || item.content.indexOf(keyword) >= 0);
+  const _list = list.filter((item) => item.title.indexOf(keyword) >= 0 || item.content.indexOf(keyword) >= 0);
+  const _order = order === '' ? '' : order.split('-')[1];
+  const _orderBy = order === '' ? '' : order.split('-')[0];
+  const filteredList = applySort(_list, getComparator(_order, _orderBy));
 
   return (
     <Page title="User">
@@ -125,16 +164,34 @@ export default function Note() {
             </Button>
           </Box>
         )}
-        <TextField
-          id="note-search"
-          label="Search"
-          variant="outlined"
-          sx={{ margin: 1 }}
-          value={keyword}
-          onChange={(e) => {
-            setKeyword(e.target.value);
-          }}
-        />
+
+        <Stack direction="row" alignItems="center" justifyContent="space-between" my={5}>
+          <TextField
+            id="note-search"
+            label="Search"
+            variant="outlined"
+            sx={{ margin: 1 }}
+            value={keyword}
+            onChange={(e) => {
+              setKeyword(e.target.value);
+            }}
+          />
+          <Select
+            labelId="demo-simple-select-label"
+            id="demo-simple-select"
+            value={order}
+            label="Sort"
+            onChange={handleOrderChange}
+          >
+            <MenuItem value={'title-asc'}>Title - ASC</MenuItem>
+            <MenuItem value={'title-desc'}>Title - DESC</MenuItem>
+            <MenuItem value={'created_at-asc'}>CreateTime - ASC</MenuItem>
+            <MenuItem value={'created_at-desc'}>CreateTime - DESC</MenuItem>
+            <MenuItem value={'updated_at-asc'}>UpdateTime - ASC</MenuItem>
+            <MenuItem value={'updated_at-desc'}>UpdateTime - DESC</MenuItem>
+          </Select>
+        </Stack>
+
         <Card>
           <Stack direction="row" alignItems="center" justifyContent="space-between" my={2}>
             <List sx={{ width: '100%', bgcolor: 'background.paper' }}>
